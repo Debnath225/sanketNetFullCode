@@ -1,6 +1,0 @@
-export default function AlertsEvents({data}) {
-  return <section><div className="section-title"><h2>Alerts & Events</h2><p>Localized hazard intelligence generated at the edge and propagated through the mesh.</p></div>
-    <div className="card"><div className="toolbar"><div className="toolbar-left"><button className="btn primary" onClick={()=>data.triggerHazard("FIRE")}>Generate test alert</button><button className="btn" onClick={data.clearAlerts}>Clear alerts</button></div><span className="small">{data.stats.alerts} active alerts</span></div>
-    <div className="table-wrap"><table><thead><tr><th>Time</th><th>Node</th><th>Hazard</th><th>Priority</th><th>Risk</th><th>Confidence</th><th>State</th></tr></thead><tbody>{data.alerts.map((a,i)=><tr key={i}><td>{a.time}</td><td>{a.node}</td><td>{a.hazard}</td><td className={`risk ${a.priority==="CRITICAL"?"high":a.priority==="HIGH"?"med":"low"}`}>{a.priority}</td><td>{a.risk}%</td><td>{a.confidence}%</td><td><span className="tag">{a.state}</span></td></tr>)}</tbody></table></div></div>
-  </section>
-}
