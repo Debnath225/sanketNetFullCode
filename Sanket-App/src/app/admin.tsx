@@ -1,0 +1,29 @@
+import { Feather } from '@expo/vector-icons';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaxContentWidth } from '@/constants/theme';
+import { useSanket } from '@/context/SanketContext';
+import { useTheme } from '@/hooks/use-theme';
+import * as api from '@/services/api';
+
+export default function AdminScreen() {
+  const theme = useTheme(); const insets = useSafeAreaInsets(); const { currentUser, connection } = useSanket();
+  const [loading, setLoading] = useState(true); const [error, setError] = useState('');
+  const [status, setStatus] = useState<Awaited<ReturnType<typeof api.getAdminStatus>> | null>(null);
+  const [users, setUsers] = useState<Awaited<ReturnType<typeof api.getAdminUsers>>>([]);
+  const load = useCallback(async () => { setLoading(true); setError(''); try { const [nextStatus, nextUsers] = await Promise.all([api.getAdminStatus(), api.getAdminUsers()]); setStatus(nextStatus); setUsers(nextUsers); } catch { setError('Unable to load administrative data. Verify your admin session and server connection.'); } finally { setLoading(false); } }, []);
+  useEffect(() => { if (currentUser?.role === 'ADMIN') load(); }, [currentUser?.role, load]);
+  if (currentUser?.role !== 'ADMIN') return <View style={[styles.center, { backgroundColor: theme.background }]}><Feather name="lock" size={28} color={theme.danger}/><Text style={{ color: theme.text, fontWeight: '800' }}>Administrator access required</Text></View>;
+  return <ScrollView style={{ backgroundColor: theme.background }} contentContainerStyle={[styles.page, { paddingTop: Platform.OS === 'web' ? 76 : Math.max(insets.top, 22), paddingBottom: Math.max(insets.bottom, 28) + 70 }]}><View style={styles.content}>
+    <View style={styles.header}><View><Text style={[styles.eyebrow, { color: theme.primary }]}>ADMINISTRATIVE CONSOLE</Text><Text style={[styles.title, { color: theme.text }]}>Network overview</Text><Text style={{ color: theme.textSecondary }}>Monitor access and operational services.</Text></View><TouchableOpacity onPress={load} style={[styles.refresh, { borderColor: theme.cardBorder }]}><Feather name="refresh-cw" size={16} color={theme.primary}/></TouchableOpacity></View>
+    {loading ? <ActivityIndicator color={theme.primary} style={{ marginTop: 42 }}/> : error ? <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}><Text style={{ color: theme.danger }}>{error}</Text></View> : <>
+      <View style={styles.stats}><Stat icon="users" label="Accounts" value={String(users.length)} theme={theme}/><Stat icon="user-check" label="Active users" value={String(users.filter(user => user.active).length)} theme={theme}/><Stat icon="radio" label="System" value={connection.isConnected ? 'Live' : 'Offline'} theme={theme}/></View>
+      <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}><Text style={[styles.cardTitle, { color: theme.text }]}>Service health</Text><Row label="Persistence" value={status?.persistence || '—'} theme={theme}/><Row label="MQTT gateway" value={status?.mqttConfigured ? 'Configured' : 'Not configured'} theme={theme}/><Row label="AI service" value={status?.llmConfigured ? 'Configured' : 'Local fallback'} theme={theme}/><Row label="Registration" value={status?.registrationEnabled ? 'Enabled' : 'Disabled'} theme={theme}/></View>
+      <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}><Text style={[styles.cardTitle, { color: theme.text }]}>Recent accounts</Text>{users.slice(0, 10).map(user => <View key={user.username} style={[styles.userRow, { borderTopColor: theme.cardBorder }]}><View><Text style={{ color: theme.text, fontWeight: '700' }}>{user.username}</Text><Text style={{ color: theme.textSecondary, fontSize: 12 }}>{new Date(user.createdAt).toLocaleDateString()}</Text></View><Text style={{ color: user.active ? theme.success : theme.danger, fontWeight: '800', fontSize: 11 }}>{user.active ? user.role : 'INACTIVE'}</Text></View>)}</View>
+    </>}
+  </View></ScrollView>;
+}
+function Stat({ icon, label, value, theme }: any) { return <View style={[styles.stat, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}><Feather name={icon} size={16} color={theme.primary}/><Text style={[styles.statValue, { color: theme.text }]}>{value}</Text><Text style={{ color: theme.textSecondary, fontSize: 11 }}>{label}</Text></View>; }
+function Row({ label, value, theme }: any) { return <View style={styles.row}><Text style={{ color: theme.textSecondary }}>{label}</Text><Text style={{ color: theme.text, fontWeight: '700' }}>{value}</Text></View>; }
+const styles = StyleSheet.create({ page: { paddingHorizontal: 18, alignItems: 'center' }, content: { width: '100%', maxWidth: MaxContentWidth, gap: 14 }, center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }, header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, eyebrow: { fontSize: 10, fontWeight: '900', letterSpacing: 1.3 }, title: { fontSize: 28, fontWeight: '900', letterSpacing: -0.6, marginVertical: 3 }, refresh: { height: 40, width: 40, borderWidth: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, stats: { flexDirection: 'row', gap: 9 }, stat: { borderWidth: 1, borderRadius: 15, padding: 12, flex: 1, gap: 4 }, statValue: { fontSize: 19, fontWeight: '900' }, card: { borderWidth: 1, borderRadius: 16, padding: 15 }, cardTitle: { fontSize: 16, fontWeight: '800', marginBottom: 8 }, row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10 }, userRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 11, borderTopWidth: StyleSheet.hairlineWidth } });
